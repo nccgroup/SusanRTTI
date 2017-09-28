@@ -1,0 +1,4 @@
+*.pyproj
+*.sln
+.vs/*
+idaapi.py
