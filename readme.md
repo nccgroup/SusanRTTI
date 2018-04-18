@@ -1,4 +1,4 @@
-# ClassInformerPython #
+# SusanRTTI #
 #### Another RTTI Parsing IDA plugin ####
 
 ### Features ###
