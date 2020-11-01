@@ -4,6 +4,9 @@
 # 03/2017
 
 import idaapi
+from idc import *
+from idc_bc695 import *
+
 idaapi.require("utils")
 idaapi.require("msvc")
 idaapi.require("gcc")
@@ -22,14 +25,14 @@ def isGcc():
     return gcc_info != BADADDR
 
 def main():
-    print "Starting ClassInformerPython"
+    print("Starting ClassInformerPython")
     if autoIsOk():
         classes = run_gcc() if isGcc() else run_msvc()
-        print classes
+        print(classes)
         show_classes(classes)
     else:
-        print "Take it easy, man"
-    print "Done"
+        print("Take it easy, man")
+    print("Done")
 
 if __name__ == '__main__':
     main()

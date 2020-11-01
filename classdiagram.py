@@ -11,16 +11,16 @@ class ClassDiagram(GraphViewer):
 
     def transitive_reduction(self, graph):
         for u in graph.keys():
-            print 'u node: ' + u + '(parents: ' + ', '.join([v for v in graph[u]]) + ')'
+            print('u node: ' + u + '(parents: ' + ', '.join([v for v in graph[u]]) + ')')
             for v in graph[u]:
                 # Compute the dfs from v
-                print 'DFS from v node: ' + v
+                print('DFS from v node: ' + v)
                 dfs = self.dfs_paths(graph, v)
                 for node in dfs:
-                    print '  - DFS node: ' + str(node)
+                    print('  - DFS node: ' + str(node))
                     if v != node and node in graph[u]:
                         graph[u].remove(node)
-                        print '  # Removed ' + u + ' -> ' + node
+                        print('  # Removed ' + u + ' -> ' + node)
         return graph
 
     def dfs_paths(self, graph, start, path=None):
@@ -28,23 +28,23 @@ class ClassDiagram(GraphViewer):
             path = [start]
         # check for leaf
         if start not in graph.keys() or len(graph[start])==0:
-            #print '    + ' + str(len(graph[start]))
-            #print start + ': []'
+            #print('    + ' + str(len(graph[start])))
+            #print(start + ': []')
             for p in path:
                 yield p
         else:
-            #print start + ': [' + ', '.join([s for s in graph[start]]) + ']'
-            print '    + RECUR: ' + ', '.join(set(graph[start]) - set(path))
+            #print(start + ': [' + ', '.join([s for s in graph[start]]) + ']')
+            print('    + RECUR: ' + ', '.join(set(graph[start]) - set(path)))
             for next in set(graph[start]) - set(path):
                 for p in self.dfs_paths(graph, next, path + [next]):
-                    print '    + ' + p
+                    print('    + ' + p)
                     yield p
 
     def add_node(self, class_name):
         if class_name is None:
             return
         if not class_name.startswith(ignore_namespaces):
-            print "Adding node: " + class_name
+            print("Adding node: " + class_name)
             new_node = self.AddNode(class_name)
             self.name_to_node[class_name] = new_node
 
@@ -57,9 +57,9 @@ class ClassDiagram(GraphViewer):
             self.add_node(class_name)
         # Create edges
         for class_name in self.name_to_node.keys():
-            print "Adding edges for: " + class_name
+            print("Adding edges for: " + class_name)
             node = self.name_to_node[class_name]
-            print "bases: " + str(self.classes[class_name])
+            print("bases: " + str(self.classes[class_name]))
             for base_name in self.classes[class_name]:
                 if base_name not in self.name_to_node:
                     # Add originally skipped base node
