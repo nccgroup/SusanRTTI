@@ -4,6 +4,7 @@
 import idaapi
 from idaapi import BADADDR
 from idc import *
+from idc_bc695 import *
 
 from utils import utils
 u = utils()
@@ -65,7 +66,7 @@ def format_type_info(ea):
   pat = u.ptr_to_bytes(0) + " " + u.ptr_to_bytes(ea)
   vtb = FindBinary(0, SEARCH_CASE|SEARCH_DOWN, pat)
   if not u.is_bad_addr(vtb):
-    print "vtable for %s at %08X" % (name, vtb)
+    print("vtable for %s at %08X" % (name, vtb))
     u.format_struct(vtb, "pp")
     u.force_name(vtb, u.vtname(name))
   else:
@@ -94,7 +95,7 @@ def format_vmi_type_info(ea):
   base_count = Dword(ea2-4)
   clas = all_classes[ea]
   if base_count > 100:
-    print "%08X: over 100 base classes?!" % ea
+    print("%08X: over 100 base classes?!" % ea)
     return BADADDR
   for i in range(base_count):
     base_ti = u.get_ptr(ea2)
@@ -112,7 +113,7 @@ def find_type_info(idx):
     if xrefs:
       ti_start = xrefs[0] - u.PTR_SIZE
       if not u.is_bad_addr(ti_start):
-        print "found %d at %08X" % (idx, ti_start)
+        print("found %d at %08X" % (idx, ti_start))
         ea2 = format_type_info(ti_start)
         if idx >= TI_CTINFO:
           u.format_struct(ea2, "p")
@@ -125,12 +126,12 @@ def handle_classes(idx, formatter):
     name = name[1:]
     ea = LocByName(name)
   if ea == BADADDR:
-    print "Could not find vtable for %s" % ti_names[idx]
+    print("Could not find vtable for %s" % ti_names[idx])
     return
   idx = 0
   handled = set()
   while ea != BADADDR:
-    print "Looking for refs to vtable %08X" % ea
+    print("Looking for refs to vtable %08X" % ea)
     if idaapi.is_spec_ea(ea):
       xrefs = u.xref_or_find(ea, True)
       ea += u.PTR_SIZE*2
@@ -140,7 +141,7 @@ def handle_classes(idx, formatter):
       xrefs = u.xref_or_find(ea, True)
     for x in xrefs:
       if not u.is_bad_addr(x) and not x in handled:
-        print "found %s at %08X" % (name, x)
+        print("found %s at %08X" % (name, x))
         ea2 = formatter(x)
         handled.add(x)
     ea = LocByName("%s_%d" % (name, idx))
@@ -150,18 +151,18 @@ def run_gcc():
     classes = {}
     # turn on GCC3 demangling
     idaapi.cvar.inf.demnames |= idaapi.DEMNAM_GCC3
-    print "Looking for standard type info classes"
+    print("Looking for standard type info classes")
     find_type_info(TI_TINFO)
     find_type_info(TI_CTINFO)
     find_type_info(TI_SICTINFO)
     find_type_info(TI_VMICTINFO)
-    print "Looking for simple classes"
+    print("Looking for simple classes")
     handle_classes(TI_CTINFO, format_type_info)
-    print "Looking for single-inheritance classes"
+    print("Looking for single-inheritance classes")
     handle_classes(TI_SICTINFO, format_si_type_info)
-    print "Looking for multiple-inheritance classes"
+    print("Looking for multiple-inheritance classes")
     handle_classes(TI_VMICTINFO, format_vmi_type_info)
-    for i in xrange(len(all_classes)):
+    for i in range(len(all_classes)):
         tiaddr = u.num2key(all_classes)[i]
         klass = all_classes[tiaddr]
         name = classname(klass.namestr)
@@ -176,9 +177,9 @@ def run_gcc():
                 nm = Name(b.ti)
                 basename = tinfo2class(nm)
             else:
-                print "Base %08X not found for class %08X!" % (b.ti, tiaddr)
+                print("Base %08X not found for class %08X!" % (b.ti, tiaddr))
                 basename = "ti_%08X" % b.ti
             basestr.append(basename)
         classes[name] = basestr
-        print "basestr: \"%s\"" % basestr
+        print("basestr: \"%s\"" % basestr)
     return classes

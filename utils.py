@@ -1,9 +1,12 @@
 import struct
+import idaapi
+from idc import *
+from idc_bc695 import *
+
 from idaapi import get_segm_by_name, hasRef, getFlags, opinfo_t, refinfo_t,\
 get_32bit, get_64bit, get_imagebase, get_byte
 import idautils
 from idautils import DataRefsTo
-from idc import *
 
 # Segments
 within = lambda x, rl: any([True for r in rl if r[0]<=x<=r[1]])
@@ -109,16 +112,16 @@ class utils(object):
       if len(lrefs) == 0:
         lrefs = list(idautils.refs(addr, self.ptrfirst, self.ptrnext))
       if len(lrefs) > 1 and not allow_many:
-          print "too many xrefs to %08X" % addr
+          print("too many xrefs to %08X" % addr)
           return []
       lrefs = [r for r in lrefs if not isCode(GetFlags(r))]
       return lrefs
 
     def find_string(self, s, afrom=0):
-      print "searching for %s" % s
+      print("searching for %s" % s)
       ea = FindBinary(afrom, SEARCH_CASE|SEARCH_DOWN, '"' + s + '"')
       if ea != BADADDR:
-        print "Found at %08X" % ea
+        print("Found at %08X" % ea)
       return ea
 
     def ForceDword(self, ea):
@@ -202,7 +205,7 @@ class utils(object):
         if len(lrefs) == 0:
             lrefs = list(idautils.refs(addr, self.ptrfirst, self.ptrnext))
         if len(lrefs) > 1 and not allow_many:
-            print "too many xrefs to %08X" % addr
+            print("too many xrefs to %08X" % addr)
             return []
         lrefs = [r for r in lrefs if not isCode(GetFlags(r))]
         return lrefs
