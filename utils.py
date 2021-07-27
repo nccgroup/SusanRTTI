@@ -1,9 +1,7 @@
 import struct
 import idaapi
 from idc import *
-from idc_bc695 import *
-
-from idaapi import get_segm_by_name, hasRef, getFlags, opinfo_t, refinfo_t,\
+from idaapi import get_segm_by_name, has_xref, get_full_flags, opinfo_t, refinfo_t,\
 get_32bit, get_64bit, get_imagebase, get_byte
 import idautils
 from idautils import DataRefsTo
@@ -29,18 +27,18 @@ class utils(object):
         self.rdata = get_segm_by_name(".rdata")
         # try to use rdata if there actually is an rdata segment, otherwise just use data
         if self.rdata is not None:
-            self.valid_ranges = [(self.rdata.startEA, self.rdata.endEA), (self.data.startEA, self.data.endEA)]
+            self.valid_ranges = [(self.rdata.start_ea, self.rdata.end_ea), (self.data.start_ea, self.data.end_ea)]
         else:
-            self.valid_ranges = [(self.data.startEA, self.data.endEA)]
+            self.valid_ranges = [(self.data.start_ea, self.data.end_ea)]
 
         self.x64 = (idaapi.getseg(here()).bitness == 2)
         if self.x64:
-            self.PTR_TYPE = FF_QWRD
+            self.PTR_TYPE = FF_QWORD
             self.REF_OFF = REF_OFF64
             self.PTR_SIZE = 8
             self.get_ptr = get_64bit
         else:
-            self.PTR_TYPE = FF_DWRD
+            self.PTR_TYPE = FF_DWORD
             self.REF_OFF = REF_OFF32
             self.PTR_SIZE = 4
             self.get_ptr = get_32bit
@@ -71,7 +69,7 @@ class utils(object):
 
     def mt_ascii(self):
         ri = refinfo_t()
-        ri.flags = ASCSTR_C
+        ri.flags = STRTYPE_C
         ri.target = -1
         mt = opinfo_t()
         mt.ri = ri
@@ -89,7 +87,7 @@ class utils(object):
     def isVtable(self, addr):
         function = self.get_ptr(addr)
         # Check if vtable has ref and its first pointer lies within code segment
-        if hasRef(getFlags(addr)) and function >= self.text.startEA and function <= self.text.endEA:
+        if has_xref(get_full_flags(addr)) and function >= self.text.start_ea and function <= self.text.end_ea:
             return True
         return False
 
@@ -102,10 +100,10 @@ class utils(object):
       return " ".join("%02X" % ord(c) for c in sv)
 
     def ptrfirst(self, val):
-      return FindBinary(0, SEARCH_CASE|SEARCH_DOWN, self.ptr_to_bytes(val))
+      return find_binary(0, SEARCH_CASE|SEARCH_DOWN, self.ptr_to_bytes(val))
 
     def ptrnext(self, val, ref):
-      return FindBinary(ref+1, SEARCH_CASE|SEARCH_DOWN, self.ptr_to_bytes(val))
+      return find_binary(ref+1, SEARCH_CASE|SEARCH_DOWN, self.ptr_to_bytes(val))
 
     def xref_or_find(self, addr, allow_many = False):
       lrefs = list(DataRefsTo(addr))
@@ -114,40 +112,40 @@ class utils(object):
       if len(lrefs) > 1 and not allow_many:
           print("too many xrefs to %08X" % addr)
           return []
-      lrefs = [r for r in lrefs if not isCode(GetFlags(r))]
+      lrefs = [r for r in lrefs if not is_code(get_full_flags(r))]
       return lrefs
 
     def find_string(self, s, afrom=0):
       print("searching for %s" % s)
-      ea = FindBinary(afrom, SEARCH_CASE|SEARCH_DOWN, '"' + s + '"')
+      ea = find_binary(afrom, SEARCH_CASE|SEARCH_DOWN, '"' + s + '"')
       if ea != BADADDR:
         print("Found at %08X" % ea)
       return ea
 
     def ForceDword(self, ea):
       if ea != BADADDR and ea != 0:
-        if not isDwrd(GetFlags(ea)):
-          MakeUnknown(ea, 4, DOUNK_SIMPLE)
-          MakeDword(ea)
-        if isOff0(GetFlags(ea)) and GetFixupTgtType(ea) == -1:
+        if not is_dword(get_full_flags(ea)):
+          del_items(ea, 4, DELIT_SIMPLE)
+          create_data(ea, FF_DWORD, 4, BADADDR)
+        if is_off0(get_full_flags(ea)) and get_fixup_target_type(ea) == -1:
           # remove the offset
-          OpHex(ea, 0)
+          op_hex(ea, 0)
 
     def ForceQword(self, ea):
       if ea != BADADDR and ea != 0:
-        if not isQwrd(GetFlags(ea)):
-          MakeUnknown(ea, 8, DOUNK_SIMPLE)
-          MakeQword(ea)
-        if isOff0(GetFlags(ea)) and GetFixupTgtType(ea) == -1:
+        if not is_qword(get_full_flags(ea)):
+          del_items(ea, 8, DELIT_SIMPLE)
+          create_data(ea, FF_QWORD, 8, BADADDR)
+        if is_off0(get_full_flags(ea)) and get_fixup_target_type(ea) == -1:
           # remove the offset
-          OpHex(ea, 0)
+          op_hex(ea, 0)
 
     def ForcePtr(self, ea, delta = 0):
       if self.x64:
         self.ForceQword(ea)
       else:
         self.ForceDword(ea)
-      if GetFixupTgtType(ea) != -1 and isOff0(GetFlags(ea)):
+      if get_fixup_target_type(ea) != -1 and is_off0(get_full_flags(ea)):
         # don't touch fixups
         return
       pv = self.get_ptr(ea)
@@ -155,7 +153,7 @@ class utils(object):
         # apply offset again
         if idaapi.is_spec_ea(pv):
           delta = 0
-        OpOffEx(ea, 0, [REF_OFF32, REF_OFF64][self.x64], -1, 0, delta)
+        op_offset(ea, 0, [REF_OFF32, REF_OFF64][self.x64], -1, 0, delta)
 
 # p pointer
 # v vtable pointer (delta ptrsize*2)
@@ -183,12 +181,12 @@ class utils(object):
       return ea
 
     def force_name(self, ea, name):
-      if isTail(GetFlags(ea)):
-        MakeUnknown(ea, 1, DOUNK_SIMPLE)
-      MakeNameEx(ea, name, SN_NOWARN)
+      if is_tail(get_full_flags(ea)):
+        del_items(ea, 1, DELIT_SIMPLE)
+      set_name(ea, name, SN_NOWARN)
 
     def is_bad_addr(self, ea):
-      return ea == 0 or ea == BADADDR or idaapi.is_spec_ea(ea) or not isLoaded(ea)
+      return ea == 0 or ea == BADADDR or idaapi.is_spec_ea(ea) or not is_loaded(ea)
 
     def vtname(self, name):
       return "__ZTV" + name
@@ -207,7 +205,7 @@ class utils(object):
         if len(lrefs) > 1 and not allow_many:
             print("too many xrefs to %08X" % addr)
             return []
-        lrefs = [r for r in lrefs if not isCode(GetFlags(r))]
+        lrefs = [r for r in lrefs if not is_code(get_full_flags(r))]
         return lrefs
 
     def num2key(self, all_classes):
@@ -215,7 +213,7 @@ class utils(object):
 
     def add_missing_classes(self, classes):
         missing = []
-        for c, parents in classes.iteritems():
+        for c, parents in classes.items():
             for parent in parents:
                 if parent not in classes.keys():
                     missing.append(parent)

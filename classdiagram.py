@@ -1,4 +1,4 @@
-from idaapi import GraphViewer, askfile_c
+from idaapi import GraphViewer, ask_file
 
 # The  below will only be displayed as bases
 ignore_namespaces = ("std", "type_info")
@@ -75,19 +75,20 @@ class ClassDiagram(GraphViewer):
     # dot file export modified from http://joxeankoret.com
     def OnCommand(self, cmd_id):
         if self.cmd_dot == cmd_id:
-            fname = askfile_c(1, "*.dot", "Export DOT file")
+            fname = ask_file(1, "*.dot", "Export DOT file")
             if fname:
-                f = open(fname, "wb")
+                f = open(fname, "wt")
                 buf = "digraph G {\n graph [overlap=scale]; node [fontname=Courier]; rankdir=\"LR\";\n\n"
-                for c in self.classes.keys():
-                    n = self.classes.keys().index(c)
+                keyList = list(self.classes.keys())
+                for c in keyList:
+                    n = keyList.index(c)
                     buf += ' a%s [shape=box, label = "%s", color="blue"]\n' % (n, c)
                 buf += "\n"
-                for c in self.classes.keys():
-                    class_index = self.classes.keys().index(c)
+                for c in keyList:
+                    class_index = keyList.index(c)
                     for base in self.classes[c]:
-                        if base in self.classes.keys():
-                            base_index = self.classes.keys().index(base)
+                        if base in keyList:
+                            base_index = keyList.index(base)
                             buf += ' a%s -> a%s [style = bold]\n' % (class_index, base_index)
                 buf += "}"
                 f.write(buf)
