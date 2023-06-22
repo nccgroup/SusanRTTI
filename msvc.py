@@ -152,7 +152,7 @@ def run_msvc():
     for offset in range(0, rdata_size-u.PTR_SIZE, u.PTR_SIZE):
         vtable = start+offset
         if u.isVtable(vtable):
-            print("vtable at : " + hex(vtable)[:-1])
+            print("vtable at : " + hex(vtable))
             col = u.get_ptr(vtable-u.PTR_SIZE)
             if u.within(col, u.valid_ranges):
                 rcol = RTTICompleteObjectLocator(col, vtable)
