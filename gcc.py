@@ -4,8 +4,6 @@
 import idaapi
 from idaapi import BADADDR
 from idc import *
-from idc_bc695 import *
-
 from utils import utils
 u = utils()
 
@@ -39,7 +37,7 @@ class ClassDescriptor:
         self.bases.append(BaseClass(base, offset, flags))
 
 def tinfo2class(tiname):
-  s = Demangle(tiname, 0)
+  s = demangle_name(tiname, 0)
   if s is None:
       return s
   return s.replace("`typeinfo for'","")
@@ -54,17 +52,18 @@ def format_type_info(ea):
   tis = u.get_ptr(ea + u.PTR_SIZE)
   if u.is_bad_addr(tis):
     return BADADDR
-  name = GetString(tis)
-  if name == None or len(name) == 0:
+  bname = get_strlit_contents(tis)
+  if bname == None or len(bname) == 0:
     return BADADDR
   # looks good, let's do it
+  name = bname.decode('UTF-8')
   ea2 = u.format_struct(ea, "vp")
   u.force_name(tis, "__ZTS" + name)
   u.force_name(ea, "__ZTI" + name)
   # find our vtable
   # 0 followed by ea
   pat = u.ptr_to_bytes(0) + " " + u.ptr_to_bytes(ea)
-  vtb = FindBinary(0, SEARCH_CASE|SEARCH_DOWN, pat)
+  vtb = find_binary(0, SEARCH_CASE|SEARCH_DOWN, pat)
   if not u.is_bad_addr(vtb):
     print("vtable for %s at %08X" % (name, vtb))
     u.format_struct(vtb, "pp")
@@ -92,7 +91,7 @@ def format_si_type_info(ea):
 def format_vmi_type_info(ea):
   ea2 = format_type_info(ea)
   ea2 = u.format_struct(ea2, "ii")
-  base_count = Dword(ea2-4)
+  base_count = create_data(ea2-4, FF_DWORD, 4, ida_idaapi.BADADDR)
   clas = all_classes[ea]
   if base_count > 100:
     print("%08X: over 100 base classes?!" % ea)
@@ -120,11 +119,11 @@ def find_type_info(idx):
 
 def handle_classes(idx, formatter):
   name = u.vtname(ti_names[idx])
-  ea = LocByName(name)
+  ea = get_name_ea_simple(name)
   if ea == BADADDR:
     # try single underscore
     name = name[1:]
-    ea = LocByName(name)
+    ea = get_name_ea_simple(name)
   if ea == BADADDR:
     print("Could not find vtable for %s" % ti_names[idx])
     return
@@ -144,7 +143,7 @@ def handle_classes(idx, formatter):
         print("found %s at %08X" % (name, x))
         ea2 = formatter(x)
         handled.add(x)
-    ea = LocByName("%s_%d" % (name, idx))
+    ea = get_name_ea_simple("%s_%d" % (name, idx))
     idx += 1
 
 def run_gcc():
@@ -174,7 +173,7 @@ def run_gcc():
                 bklass = all_classes[b.ti]
                 basename = classname(bklass.namestr)
             elif idaapi.is_spec_ea(b.ti):
-                nm = Name(b.ti)
+                nm = get_name(b.ti, ida_name.GN_VISIBLE)
                 basename = tinfo2class(nm)
             else:
                 print("Base %08X not found for class %08X!" % (b.ti, tiaddr))
