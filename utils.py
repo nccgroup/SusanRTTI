@@ -97,7 +97,7 @@ class utils(object):
         sv = struct.pack("<Q", val)
       else:
         sv = struct.pack("<I", val)
-      return " ".join("%02X" % ord(c) for c in sv)
+      return " ".join("%02X" % b for b in sv)
 
     def ptrfirst(self, val):
       return find_binary(0, SEARCH_CASE|SEARCH_DOWN, self.ptr_to_bytes(val))
